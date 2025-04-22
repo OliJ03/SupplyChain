@@ -1,0 +1,25 @@
+/* style.css */
+
+/* Buttons */
+.connect-btn {
+	@apply bg-white text-blue-600 font-semibold px-4 py-2 rounded hover:bg-blue-100;
+}
+  
+/* Quick Link Cards */
+.card-link {
+@apply bg-white p-4 text-center rounded shadow hover:bg-blue-50 transition duration-150;
+}
+
+/* Stats Cards */
+.stat-card {
+@apply bg-white shadow p-6 rounded-lg text-center;
+}
+
+.stat-value {
+@apply text-3xl font-bold;
+}
+
+/* Additional Styling */
+body {
+font-family: 'Inter', sans-serif;
+}
