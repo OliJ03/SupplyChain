@@ -28,7 +28,7 @@ const App = {
   },
 
   initContract: async function () {
-    const response = await fetch('SupplyChain.json');
+    const response = await fetch('/build/contracts/SupplyChain.json');
     const artifact = await response.json();
     
     const networkId = await web3.eth.net.getId();
