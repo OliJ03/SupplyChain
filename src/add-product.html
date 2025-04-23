@@ -42,16 +42,16 @@
   <main class="container mx-auto p-6">
     <section class="bg-white p-6 rounded shadow">
       <h2 class="text-xl font-semibold mb-4">Register a New Product</h2>
-      <form id="actorForm" class="space-y-4">
+      <form id="addProductForm" class="space-y-4">
         <div>
-          <label for="name" class="block font-medium">Name of Product:</label>
-          <input type="text" id="name" class="w-full mt-1 p-2 border rounded" required />
+          <label for="productName" class="block font-medium">Name of Product:</label>
+          <input type="text" id="productName" class="w-full mt-1 p-2 border rounded" required />
         </div>
         <div>
           <label for="address" class="block font-medium">Description of Product:</label>
-          <input type="text" id="address" class="w-full mt-1 p-2 border rounded" required />
+          <input type="text" id="productDescription" class="w-full mt-1 p-2 border rounded" required />
         </div>
-        <button onclick = "addProduct()" type="submit" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">Register Product</button>
+        <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">Register Product</button>
       </form>
     </section>
   </main>
