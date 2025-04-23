@@ -5,7 +5,7 @@ const App = {
   contractInstance: null,
 
   init: async function () {
-    console.log("🛠️ app.js loaded");
+    console.log("app.js loaded");
     await App.initWeb3();
     await App.initContract();
     App.bindFormEvents();
@@ -69,6 +69,10 @@ const App = {
     const buyForm = document.getElementById("buyForm");
     if(buyForm){
     buyForm.addEventListener("submit", App.handleBuyProduct);
+    }
+    const updateForm = document.getElementById("updateForm");
+    if(updateForm){
+    updateForm.addEventListener("submit", updateProduct);
     }
   },
 
@@ -216,19 +220,50 @@ const App = {
   }
 };
 
-async function updateStage(productId = 0) {
+async function updateProduct(e) {
+  e.preventDefault();  
   if (!App.contractInstance) return alert("Contract not loaded.");
+
+  // 1) Read the product ID from the form
+  const raw = document.getElementById("updateProductId").value.trim();
+  const productId = parseInt(raw, 10);
+  if (isNaN(productId)) {
+    return alert("Please enter a valid product ID.");
+  }
+
   try {
-    await App.contractInstance.methods
-      .advanceStage(productId)
-      .send({ from: App.account });
-    console.log("Stage updated successfully for product", productId);
-    alert("Stage updated successfully!");
+    // 2) Prepare & estimate gas
+    const tx = App.contractInstance.methods.advanceStage(productId);
+    const gasEstimate = await tx.estimateGas({ from: App.account });
+
+    // 3) Send & wait for confirmation
+    const receipt = await tx.send({
+      from: App.account,
+      gas:   gasEstimate
+    });
+    console.log("advanceStage receipt:", receipt);
+
+    // (Optional) if you emit an event, log it:
+    if (receipt.events?.StageAdvanced) {
+      const idx = receipt.events.StageAdvanced.returnValues.newStage;
+      console.log(`New stage index: ${idx}`);
+    }
+
+    // 4) Pull back & display the new stage string
+    const newStage = await App.contractInstance.methods
+      .viewCurrentStage(productId)
+      .call();
+    document.getElementById("currentStageDisplay").innerText = newStage;
+
+    alert(`Product ${productId} advanced to "${newStage}"`);
   } catch (err) {
-    console.error("Error updating stage:", err);
-    alert("There was an error updating the stage. See console for details.");
+    console.error("Error advancing stage:", err);
+    // Extract the revert reason if any
+    const reason = err.data?.message || err.message;
+    alert(reason.replace(/.*revert\s?/, "") || "Update failed");
   }
 }
+
 
 document.addEventListener("DOMContentLoaded", () => {
   App.init();

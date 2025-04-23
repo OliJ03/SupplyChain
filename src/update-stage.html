@@ -42,13 +42,16 @@
   <main class="container mx-auto p-6">
     <section class="bg-white p-6 rounded shadow">
       <h2 class="text-xl font-semibold mb-4">Enter Product</h2>
-      <form id="updateStageForm" class="space-y-4">
+      <form id="updateForm" class="space-y-4">
         <div>
-          <label for="name" class="block font-medium">Product Id:</label>
-          <input type="text" id="name" class="w-full mt-1 p-2 border rounded" required />
+          <label for="updateProductId" class="block font-medium">Product Id:</label>
+          <input type="number" id="updateProductId" class="w-full mt-1 p-2 border rounded" required />
         </div>
-        <button onclick= "updateStage()" type="submit" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">Advance Stage</button>
+        <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">Advance Stage</button>
       </form>
+      <div class="mt-4 p-4 bg-gray-50 rounded shadow">
+        <strong>Current Stage:</strong>
+        <span id="currentStageDisplay">—</span>
     </section>
   </main>
 
