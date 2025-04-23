@@ -1,59 +1,62 @@
-let contract;
-let accounts;
-let web3;
+const App = {
+      web3Provider: null,
+      contracts: {},
+      account: null,
+      contractInstance: null,
 
-window.addEventListener("load", async () => {
-  if (window.ethereum) {
-    window.web3 = new Web3(window.ethereum);
-    await ethereum.enable();
-    accounts = await web3.eth.getAccounts();
+      init: async function () {
+        await App.initWeb3();
+        await App.initContract();
+      },
 
-    const response = await fetch('/build/contracts/SupplyChain.json');
-    const data = await response.json();
-    const contractABI = data.abi;
-    const networkId = await web3.eth.net.getId();
-    const contractAddress = data.networks[networkId].address;
+      initWeb3: async function () {
+        if (window.ethereum) {
+          App.web3Provider = window.ethereum;
+          try {
+            await window.ethereum.request({ method: "eth_requestAccounts" });
+            window.web3 = new Web3(App.web3Provider);
+            const accounts = await web3.eth.getAccounts();
+            App.account = accounts[0];
+            console.log("Connected account:", App.account);
+          } catch (error) {
+            console.error("User denied account access:", error);
+          }
+        } else {
+          alert("Please install MetaMask!");
+        }
+      },
 
-    contract = new web3.eth.Contract(contractABI, contractAddress);
-  }
-});
+      initContract: async function () {
+        const response = await fetch('/build/contracts/SupplyChain.json');
+        const artifact = await response.json();
+        const networkId = await web3.eth.net.getId();
+        const contractAddress = artifact.networks[networkId]?.address;
 
-async function addProduct() {
-  await contract.methods.addProduct("Phone", "5G smartphone").send({ from: accounts[0] });
-}
+        if (!contractAddress) {
+          alert("Smart contract not deployed on this network.");
+          return;
+        }
 
-async function updateStage() {
-  await contract.methods.updateStage(0).send({ from: accounts[0] });
-}
-
-const connectWallet = async () => {
-  if (window.ethereum) {
-    web3 = new Web3(window.ethereum);
-    try {
-      await window.ethereum.request({ method: "eth_requestAccounts" });
-      const accounts = await web3.eth.getAccounts();
-      const connectBtn = document.getElementById("connectBtn");
-      if (connectBtn) {
-        connectBtn.innerText = `Connected: ${accounts[0].slice(0, 6)}...`;
+        App.contractInstance = new web3.eth.Contract(artifact.abi, contractAddress);
+        console.log("Contract loaded at:", contractAddress);
       }
-    } catch (error) {
-      console.error("Wallet connection failed:", error);
+    };
+
+    // Example functions for your buttons
+    async function addProduct() {
+      if (!App.contractInstance) return alert("Contract not loaded.");
+      await App.contractInstance.methods.addProduct("Phone", "5G smartphone")
+        .send({ from: App.account });
     }
-  } else {
-    alert("Please install MetaMask to use this feature.");
-  }
-};
 
-window.addEventListener("DOMContentLoaded", () => {
-  const connectBtn = document.getElementById("connectBtn");
-  if (connectBtn) {
-    connectBtn.addEventListener("click", connectWallet);
-  }
+    async function updateStage() {
+      if (!App.contractInstance) return alert("Contract not loaded.");
+      await App.contractInstance.methods.updateStage(0)
+        .send({ from: App.account });
+    }
 
-  // Page specific logic for add-actor.html
-  if (window.location.pathname.includes("add-actor.html")) {
-    const form = document.getElementById("actorForm");
-    if (form) {
+    // Auto init when page fully loads
+    window.addEventListener('load', App.init);
       form.addEventListener("submit", async (e) => {
         e.preventDefault();
 
