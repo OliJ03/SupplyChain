@@ -37,7 +37,7 @@ const App = {
 
   initContract: async function () {
     console.log("initContract running");
-    const response = await fetch('/build/contracts/SupplyChain.json?ts=${Date.now()}');
+    const response = await fetch(`/build/contracts/SupplyChain.json?ts=${Date.now()}`);
     const artifact = await response.json();
     const networkId = await web3.eth.net.getId();
     console.log("networkId:", networkId);
@@ -145,14 +145,15 @@ const App = {
 
     const name = document.getElementById("productName").value.trim();
     const description = document.getElementById("productDescription").value.trim();
-
-    if (!name || !description) {
+    const price = document.getElementById("productPrice").value.trim();
+    const priceWei = web3.utils.toWei(price, "ether");
+    if (!name || !description || !price) {
       return alert("Please enter both product name and description.");
     }
 
     try {
       await App.contractInstance.methods
-        .createProduct(name, description)
+        .createProduct(name, description, priceWei)
         .send({ from: App.account });
       alert("Product registered successfully!");
     } catch (err) {
@@ -184,8 +185,10 @@ const App = {
         <p><strong>ID:</strong> ${productId}</p>
         <p><strong>Name:</strong> ${prod.name}</p>
         <p><strong>Description:</strong> ${prod.description}</p>
+        <p><strong>Price:</strong> ${prod.price}</p>
         <p><strong>Stage:</strong> ${stageStr}</p>
         <p><strong>Owner:</strong> ${prod.currentOwner}</p>
+        
       `;
 
       if (resultDiv) {
@@ -197,6 +200,7 @@ const App = {
    ID:          		${productId}
    Name:        	${prod.name}
    Description: 	${prod.description}
+   Price: 		${prod.price}
    Stage:       		${stageStr}
    Owner:       	${prod.currentOwner}`
 );
@@ -214,9 +218,14 @@ const App = {
     const id = parseInt(rawId, 10);
     if (isNaN(id)) return alert("Please enter a valid product ID.");
     try {
+      const prod = await App.contractInstance.methods.products(id).call();
+      const stage = parseInt(prod.currentStage);
+    if (stage !== 4) {  // 4 = Retailer
+      return alert("Product is not at the Retailer stage yet.");
+    }
       await App.contractInstance.methods
         .purchaseItem(id)
-        .send({ from: App.account/*, value: price*/ });
+        .send({ from: App.account, value: web3.utils.toBN(prod.price) });
       console.log("Product purchased:", id);
       alert(`Product ${id} purchased successfully!`);
     } catch (err) {
@@ -241,6 +250,7 @@ const App = {
         <h3 class="font-semibold">Product #${i}</h3>
         <p><strong>Name:</strong> ${prod.name}</p>
         <p><strong>Description:</strong> ${prod.description}</p>
+        <p><strong>Price:</strong> ${prod.price}</p>
         <p><strong>Stage:</strong> ${stage}</p>
         <p><strong>Owner:</strong> ${prod.currentOwner}</p>
       `;

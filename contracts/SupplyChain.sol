@@ -13,8 +13,10 @@ contract SupplyChain {
     struct Product {
         string name;
         string description;
+        uint256 price; 
         Stage currentStage;
         address currentOwner;
+        
     }
 
     uint public productCount = 0;
@@ -48,8 +50,8 @@ contract SupplyChain {
     }
 
     // Create a new product
-    function createProduct(string memory name, string memory description) public {
-        products[productCount] = Product(name, description, Stage.RawMaterial, msg.sender);
+    function createProduct(string memory name, string memory description, uint256 price) public {
+        products[productCount] = Product(name, description, price, Stage.RawMaterial, msg.sender);
         productCount++;
     }
 
@@ -62,10 +64,11 @@ contract SupplyChain {
     }
 
     // Purchase item at final stage
-    function purchaseItem(uint productId) public {
+    function purchaseItem(uint productId) public payable{
         require(productId < productCount, "Invalid product ID");
         Product storage product = products[productId];
         require(product.currentStage == Stage.Retailer, "Product not yet in retail stage");
+        require(msg.value == product.price, "Incorrect payment amount");
         product.currentStage = Stage.Sold;
         product.currentOwner = msg.sender;
     }
