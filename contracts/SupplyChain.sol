@@ -82,5 +82,8 @@ contract SupplyChain {
         if (stage == Stage.Sold) return "Sold";
         return "Unknown";
     }
+    function getTotalActors() public view returns (uint) {
+    return rawMaterialSuppliers.length + suppliers.length + shippers.length + distributors.length + retailers.length;
+  }
 }
 

@@ -9,6 +9,13 @@ const App = {
     await App.initWeb3();
     await App.initContract();
     App.bindFormEvents();
+    if (document.getElementById("productList")) {
+    App.renderProductList();
+  }
+
+  if (document.getElementById("productCount")) {
+    App.loadStats();
+  }
   },
 
   initWeb3: async function () {
@@ -30,7 +37,7 @@ const App = {
 
   initContract: async function () {
     console.log("initContract running");
-    const response = await fetch('/build/contracts/SupplyChain.json');
+    const response = await fetch('/build/contracts/SupplyChain.json?ts=${Date.now()}');
     const artifact = await response.json();
     const networkId = await web3.eth.net.getId();
     console.log("networkId:", networkId);
@@ -74,6 +81,9 @@ const App = {
     if(updateForm){
     updateForm.addEventListener("submit", updateProduct);
     }
+    const loadBtn = document.getElementById("loadProductsBtn");
+    if (loadBtn) loadBtn.addEventListener("click", App.renderProductList);
+
   },
 
   handleAddActor: async function (e) {
@@ -122,6 +132,7 @@ const App = {
           return alert("Invalid role selected.");
       }
       alert(`Actor (${role}) added successfully!`);
+      App.loadStats();
     } catch (err) {
       console.error("Error adding actor:", err);
       alert("There was an error adding the actor. See console for details.");
@@ -202,11 +213,6 @@ const App = {
     const rawId = document.getElementById("buyProductId").value.trim();
     const id = parseInt(rawId, 10);
     if (isNaN(id)) return alert("Please enter a valid product ID.");
-
-    // Optional: price input in Ether
-    //const rawPrice = document.getElementById("buyPrice").value.trim();
-    //const price = rawPrice ? web3.utils.toWei(rawPrice, 'ether') : 0;
-
     try {
       await App.contractInstance.methods
         .purchaseItem(id)
@@ -217,6 +223,37 @@ const App = {
       console.error("purchaseItem failed:", err);
       alert(err.message || "Failed to purchase item. Ensure it's at Retailer stage and you sent enough ETH.");
     }
+  },
+  renderProductList: async function () {
+    if (!App.contractInstance) return alert("Contract not loaded.");
+
+    const count = await App.contractInstance.methods.productCount().call();
+    const listEl = document.getElementById("productList");
+    listEl.innerHTML = "";
+
+    for (let i = 0; i < count; i++) {
+      const prod = await App.contractInstance.methods.products(i).call();
+      const stage = await App.contractInstance.methods.viewCurrentStage(i).call();
+
+      const card = document.createElement("div");
+      card.className = "p-4 border rounded shadow-sm";
+      card.innerHTML = `
+        <h3 class="font-semibold">Product #${i}</h3>
+        <p><strong>Name:</strong> ${prod.name}</p>
+        <p><strong>Description:</strong> ${prod.description}</p>
+        <p><strong>Stage:</strong> ${stage}</p>
+        <p><strong>Owner:</strong> ${prod.currentOwner}</p>
+      `;
+      listEl.appendChild(card);
+    }
+  },
+  loadStats: async function () {
+    if (!App.contractInstance) return;
+
+    const prodCount = await App.contractInstance.methods.productCount().call();
+    document.getElementById("productCount").innerText = prodCount;
+    const actorCount = await App.contractInstance.methods.getTotalActors().call();
+    document.getElementById("actorCount").innerText = actorCount;
   }
 };
 
@@ -224,7 +261,6 @@ async function updateProduct(e) {
   e.preventDefault();  
   if (!App.contractInstance) return alert("Contract not loaded.");
 
-  // 1) Read the product ID from the form
   const raw = document.getElementById("updateProductId").value.trim();
   const productId = parseInt(raw, 10);
   if (isNaN(productId)) {
@@ -232,15 +268,10 @@ async function updateProduct(e) {
   }
 
   try {
-    // 2) Prepare & estimate gas
     const tx = App.contractInstance.methods.advanceStage(productId);
     const gasEstimate = await tx.estimateGas({ from: App.account });
 
-    // 3) Send & wait for confirmation
-    const receipt = await tx.send({
-      from: App.account,
-      gas:   gasEstimate
-    });
+    const receipt = await tx.send({from: App.account, gas:gasEstimate});
     console.log("advanceStage receipt:", receipt);
 
     // (Optional) if you emit an event, log it:
@@ -249,7 +280,6 @@ async function updateProduct(e) {
       console.log(`New stage index: ${idx}`);
     }
 
-    // 4) Pull back & display the new stage string
     const newStage = await App.contractInstance.methods
       .viewCurrentStage(productId)
       .call();
@@ -258,7 +288,6 @@ async function updateProduct(e) {
     alert(`Product ${productId} advanced to "${newStage}"`);
   } catch (err) {
     console.error("Error advancing stage:", err);
-    // Extract the revert reason if any
     const reason = err.data?.message || err.message;
     alert(reason.replace(/.*revert\s?/, "") || "Update failed");
   }
