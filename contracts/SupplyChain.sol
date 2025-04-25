@@ -16,9 +16,9 @@ contract SupplyChain {
         uint256 price; 
         Stage currentStage;
         address currentOwner;
-        
     }
 
+    address public owner;
     uint public productCount = 0;
     mapping(uint => Product) public products;
 
@@ -28,35 +28,44 @@ contract SupplyChain {
     Company[] public distributors;
     Company[] public retailers;
 
+    constructor() {
+        owner = msg.sender;
+    }
+
+    modifier onlyOwner() {
+        require(msg.sender == owner, "Only owner can perform this action");
+        _;
+    }
+
     // Add Company Functions
-    function addRawMaterialSupplier(string memory name, address companyAddr, string memory location) public {
+    function addRawMaterialSupplier(string memory name, address companyAddr, string memory location) public onlyOwner {
         rawMaterialSuppliers.push(Company(name, companyAddr, location));
     }
 
-    function addSupplier(string memory name, address companyAddr, string memory location) public {
+    function addSupplier(string memory name, address companyAddr, string memory location) public onlyOwner {
         suppliers.push(Company(name, companyAddr, location));
     }
 
-    function addShipper(string memory name, address companyAddr, string memory location) public {
+    function addShipper(string memory name, address companyAddr, string memory location) public onlyOwner {
         shippers.push(Company(name, companyAddr, location));
     }
 
-    function addDistributer(string memory name, address companyAddr, string memory location) public {
+    function addDistributer(string memory name, address companyAddr, string memory location) public onlyOwner {
         distributors.push(Company(name, companyAddr, location));
     }
 
-    function addRetailer(string memory name, address companyAddr, string memory location) public {
+    function addRetailer(string memory name, address companyAddr, string memory location) public onlyOwner {
         retailers.push(Company(name, companyAddr, location));
     }
 
     // Create a new product
-    function createProduct(string memory name, string memory description, uint256 price) public {
+    function createProduct(string memory name, string memory description, uint256 price) public onlyOwner {
         products[productCount] = Product(name, description, price, Stage.RawMaterial, msg.sender);
         productCount++;
     }
 
     // Simulate progress through supply chain
-    function advanceStage(uint productId) public {
+    function advanceStage(uint productId) public onlyOwner {
         require(productId < productCount, "Invalid product ID");
         Product storage product = products[productId];
         require(product.currentStage != Stage.Sold, "Product already sold");
@@ -64,7 +73,7 @@ contract SupplyChain {
     }
 
     // Purchase item at final stage
-    function purchaseItem(uint productId) public payable{
+    function purchaseItem(uint productId) public payable {
         require(productId < productCount, "Invalid product ID");
         Product storage product = products[productId];
         require(product.currentStage == Stage.Retailer, "Product not yet in retail stage");
@@ -85,8 +94,9 @@ contract SupplyChain {
         if (stage == Stage.Sold) return "Sold";
         return "Unknown";
     }
+
     function getTotalActors() public view returns (uint) {
-    return rawMaterialSuppliers.length + suppliers.length + shippers.length + distributors.length + retailers.length;
-  }
+        return rawMaterialSuppliers.length + suppliers.length + shippers.length + distributors.length + retailers.length;
+    }
 }
 
