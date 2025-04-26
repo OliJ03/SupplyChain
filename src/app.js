@@ -196,14 +196,14 @@ const App = {
       } else {
         console.log("Track product result:", output);
         alert(
-  `Track product result:
-   ID:          		${productId}
-   Name:        	${prod.name}
-   Description: 	${prod.description}
-   Price: 		${prod.price}
-   Stage:       		${stageStr}
-   Owner:       	${prod.currentOwner}`
-);
+          `Track product result:
+          ID:          		${productId}
+          Name:        	${prod.name}
+          Description: 	${prod.description}
+          Price: 		${prod.price}
+          Stage:       		${stageStr}
+          Owner:       	${prod.currentOwner}`
+        );
       }
     } catch (err) {
       console.error("Error tracking product:", err);
@@ -233,6 +233,41 @@ const App = {
       alert(err.message || "Failed to purchase item. Ensure it's at Retailer stage and you sent enough ETH.");
     }
   },
+
+  renderActorProducts: async function () {
+    if (!App.contractInstance) return alert("Contract not loaded.");
+
+    const count = await App.contractInstance.methods.productCount().call();
+    const listEl = document.getElementById("actorProductList");
+    if (!listEl) return;  // actorProductList not on every page
+    listEl.innerHTML = "";
+
+    for (let i = 0; i < count; i++) {
+      const prod = await App.contractInstance.methods.products(i).call();
+      
+      if (prod.currentOwner.toLowerCase() !== App.account.toLowerCase()) {
+        continue; // skip products not owned by the connected user
+      }
+
+      const stage = await App.contractInstance.methods.viewCurrentStage(i).call();
+
+      const card = document.createElement("div");
+      card.className = "bg-white p-6 rounded-lg shadow-lg";
+      card.innerHTML = `
+        <h2 class="text-xl font-semibold mb-2">Product #${i}</h2>
+        <p><strong>Name:</strong> ${prod.name}</p>
+        <p><strong>Description:</strong> ${prod.description}</p>
+        <p><strong>Price:</strong> ${web3.utils.fromWei(prod.price, "ether")} ETH</p>
+        <p><strong>Stage:</strong> ${stage}</p>
+      `;
+      listEl.appendChild(card);
+    }
+
+    if (listEl.innerHTML.trim() === "") {
+      listEl.innerHTML = "<p>No products owned by you currently.</p>";
+    }
+  },
+
   renderProductList: async function () {
     if (!App.contractInstance) return alert("Contract not loaded.");
 
