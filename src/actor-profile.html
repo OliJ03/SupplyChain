@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>My Products - SupplyChain DApp</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/web3@1.8.0/dist/web3.min.js"></script>
+  <script src="app.js"></script>
+</head>
+<body class="bg-gray-100 text-gray-800">
+
+  <!-- Top Navbar -->
+  <header class="bg-white shadow-sm p-4 border-b">
+    <div class="container mx-auto flex justify-between items-center">
+      <div class="flex items-center gap-4">
+        <!--Logo to go back to home page-->
+        <a href="index.html">
+            <img src="Images/Logo.png" alt="Logo" class="h-12 w-12 cursor-pointer" />
+          </a>
+        </div>
+      <div class="flex items-center gap-6">
+        <button class="text-gray-500 hover:text-blue-600" title="Search">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5a7 7 0 015.291 11.707l4.001 4.002a1 1 0 01-1.414 1.414l-4.001-4.001A7 7 0 1111 5z" />
+          </svg>
+        </button>
+        <button class="text-gray-500 hover:text-blue-600" title="Account">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 14c3.866 0 7 1.567 7 3.5V20H5v-2.5C5 15.567 8.134 14 12 14zm0-2a4 4 0 100-8 4 4 0 000 8z" />
+          </svg>
+        </button>
+        <button id="connectBtn" class="bg-blue-600 text-white font-semibold px-4 py-2 rounded hover:bg-blue-700">Connect Wallet</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Ribbon Header -->
+  <div class="bg-blue-600 text-white py-3 shadow">
+    <div class="container mx-auto px-4">
+      <h1 class="text-lg font-semibold">My Products</h1>
+    </div>
+  </div>
+
+  <main class="container mx-auto p-6">
+    <section class="mb-6">
+      <h2 class="text-2xl font-semibold mb-4">Products You Own</h2>
+
+      <div class="overflow-x-auto bg-white shadow rounded-lg">
+        <table class="min-w-full table-auto">
+          <thead class="bg-gray-100 text-gray-600 uppercase text-sm leading-normal">
+            <tr>
+              <th class="py-3 px-6 text-left">#</th>
+              <th class="py-3 px-6 text-left">Name</th>
+              <th class="py-3 px-6 text-left">Description</th>
+              <th class="py-3 px-6 text-left">Price (ETH)</th>
+              <th class="py-3 px-6 text-left">Stage</th>
+            </tr>
+          </thead>
+          <tbody id="actorProductTable" class="text-gray-700">
+            <!-- Product rows will be injected here -->
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="mt-8">
+      <a href="index.html" class="inline-block bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded">
+        ← Back to Dashboard
+      </a>
+    </section>
+  </main>
+
+  <script>
+    document.addEventListener("DOMContentLoaded", async () => {
+      await App.init();
+      App.renderActorProducts();
+    });
+  </script>
+
+</body>
+</html>
