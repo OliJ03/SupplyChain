@@ -18,6 +18,7 @@ contract SupplyChain {
         address currentOwner;
     }
 
+
     address public owner;
     uint public productCount = 0;
     mapping(uint => Product) public products;
@@ -93,6 +94,24 @@ contract SupplyChain {
         if (stage == Stage.Retailer) return "Retailer";
         if (stage == Stage.Sold) return "Sold";
         return "Unknown";
+    }
+
+    function getProductsByOwner(address ownerAddr) public view returns (Product[] memory) {
+        uint count = 0;
+        for (uint i = 0; i < productCount; i++) {
+            if (products[i].currentOwner == ownerAddr) {
+                count++;
+            }
+        }
+        Product[] memory ownerProducts = new Product[](count);
+        uint index = 0;
+        for (uint i = 0; i < productCount; i++) {
+            if (products[i].currentOwner == ownerAddr) {
+                ownerProducts[index] = products[i];
+                index++;
+            }
+        }
+        return ownerProducts;
     }
 
     function getTotalActors() public view returns (uint) {
