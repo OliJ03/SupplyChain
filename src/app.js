@@ -10,12 +10,12 @@ const App = {
     await App.initContract();
     App.bindFormEvents();
     if (document.getElementById("productList")) {
-    App.renderProductList();
-  }
+      App.renderProductList();
+    }
 
-  if (document.getElementById("productCount")) {
-    App.loadStats();
-  }
+    if (document.getElementById("productCount")) {
+      App.loadStats();
+    }
   },
 
   initWeb3: async function () {
@@ -37,7 +37,9 @@ const App = {
 
   initContract: async function () {
     console.log("initContract running");
-    const response = await fetch(`/build/contracts/SupplyChain.json?ts=${Date.now()}`);
+    const response = await fetch(
+      `/build/contracts/SupplyChain.json?ts=${Date.now()}`
+    );
     const artifact = await response.json();
     const networkId = await web3.eth.net.getId();
     console.log("networkId:", networkId);
@@ -57,33 +59,31 @@ const App = {
   bindFormEvents: function () {
     // Actor form
     const actorForm = document.getElementById("actorForm");
-   
+
     if (actorForm) {
       actorForm.addEventListener("submit", App.handleAddActor);
-     
     }
-   //Add Product Form
+    //Add Product Form
     const productForm = document.getElementById("addProductForm");
     if (productForm) {
       productForm.addEventListener("submit", App.handleRegisterProduct);
     }
-    
+
     const trackForm = document.getElementById("trackForm");
-    if(trackForm){
-    trackForm.addEventListener("submit", App.handleTrackProduct);
+    if (trackForm) {
+      trackForm.addEventListener("submit", App.handleTrackProduct);
     }
-    
+
     const buyForm = document.getElementById("buyForm");
-    if(buyForm){
-    buyForm.addEventListener("submit", App.handleBuyProduct);
+    if (buyForm) {
+      buyForm.addEventListener("submit", App.handleBuyProduct);
     }
     const updateForm = document.getElementById("updateForm");
-    if(updateForm){
-    updateForm.addEventListener("submit", updateProduct);
+    if (updateForm) {
+      updateForm.addEventListener("submit", updateProduct);
     }
     const loadBtn = document.getElementById("loadProductsBtn");
     if (loadBtn) loadBtn.addEventListener("click", App.renderProductList);
-
   },
 
   handleAddActor: async function (e) {
@@ -144,7 +144,9 @@ const App = {
     if (!App.contractInstance) return alert("Contract not loaded.");
 
     const name = document.getElementById("productName").value.trim();
-    const description = document.getElementById("productDescription").value.trim();
+    const description = document
+      .getElementById("productDescription")
+      .value.trim();
     const price = document.getElementById("productPrice").value.trim();
     const priceWei = web3.utils.toWei(price, "ether");
     if (!name || !description || !price) {
@@ -158,7 +160,9 @@ const App = {
       alert("Product registered successfully!");
     } catch (err) {
       console.error("Error registering product:", err);
-      alert("There was an error registering the product. See console for details.");
+      alert(
+        "There was an error registering the product. See console for details."
+      );
     }
   },
   handleTrackProduct: async function (e) {
@@ -168,7 +172,7 @@ const App = {
 
     const idInput = document.getElementById("trackProductId");
     const resultDiv = document.getElementById("trackResult");
-    const rawId = idInput ? idInput.value.trim() : '';
+    const rawId = idInput ? idInput.value.trim() : "";
     const productId = parseInt(rawId, 10);
 
     if (isNaN(productId)) {
@@ -176,9 +180,18 @@ const App = {
     }
 
     try {
-      const prod = await App.contractInstance.methods.products(productId).call();
+      const prod = await App.contractInstance.methods
+        .products(productId)
+        .call();
       const stageIndex = parseInt(prod.currentStage, 10);
-      const stages = ["RawMaterial", "Supplier", "Shipper", "Distributor", "Retailer", "Sold"];
+      const stages = [
+        "RawMaterial",
+        "Supplier",
+        "Shipper",
+        "Distributor",
+        "Retailer",
+        "Sold",
+      ];
       const stageStr = stages[stageIndex] || `Unknown (${stageIndex})`;
 
       const output = `
@@ -207,7 +220,9 @@ const App = {
       }
     } catch (err) {
       console.error("Error tracking product:", err);
-      alert("There was an error fetching product data. See console for details.");
+      alert(
+        "There was an error fetching product data. See console for details."
+      );
     }
   },
   handleBuyProduct: async function (e) {
@@ -220,9 +235,10 @@ const App = {
     try {
       const prod = await App.contractInstance.methods.products(id).call();
       const stage = parseInt(prod.currentStage);
-    if (stage !== 4) {  // 4 = Retailer
-      return alert("Product is not at the Retailer stage yet.");
-    }
+      if (stage !== 4) {
+        // 4 = Retailer
+        return alert("Product is not at the Retailer stage yet.");
+      }
       await App.contractInstance.methods
         .purchaseItem(id)
         .send({ from: App.account, value: web3.utils.toBN(prod.price) });
@@ -230,41 +246,52 @@ const App = {
       alert(`Product ${id} purchased successfully!`);
     } catch (err) {
       console.error("purchaseItem failed:", err);
-      alert(err.message || "Failed to purchase item. Ensure it's at Retailer stage and you sent enough ETH.");
+      alert(
+        err.message ||
+          "Failed to purchase item. Ensure it's at Retailer stage and you sent enough ETH."
+      );
     }
   },
 
   renderActorProducts: async function () {
     if (!App.contractInstance) return alert("Contract not loaded.");
-
+  
     const count = await App.contractInstance.methods.productCount().call();
-    const listEl = document.getElementById("actorProductList");
-    if (!listEl) return;  // actorProductList not on every page
-    listEl.innerHTML = "";
-
+    const tableBody = document.getElementById("actorProductTable");
+    if (!tableBody) return;
+    tableBody.innerHTML = "";
+  
+    let hasProducts = false;
+  
     for (let i = 0; i < count; i++) {
       const prod = await App.contractInstance.methods.products(i).call();
-      
+  
       if (prod.currentOwner.toLowerCase() !== App.account.toLowerCase()) {
-        continue; // skip products not owned by the connected user
+        continue;
       }
-
+  
       const stage = await App.contractInstance.methods.viewCurrentStage(i).call();
-
-      const card = document.createElement("div");
-      card.className = "bg-white p-6 rounded-lg shadow-lg";
-      card.innerHTML = `
-        <h2 class="text-xl font-semibold mb-2">Product #${i}</h2>
-        <p><strong>Name:</strong> ${prod.name}</p>
-        <p><strong>Description:</strong> ${prod.description}</p>
-        <p><strong>Price:</strong> ${web3.utils.fromWei(prod.price, "ether")} ETH</p>
-        <p><strong>Stage:</strong> ${stage}</p>
+  
+      const row = document.createElement("tr");
+      row.className = "border-b";
+      row.innerHTML = `
+        <td class="py-3 px-6">${i}</td>
+        <td class="py-3 px-6">${prod.name}</td>
+        <td class="py-3 px-6">${prod.description}</td>
+        <td class="py-3 px-6">${web3.utils.fromWei(prod.price, "ether")}</td>
+        <td class="py-3 px-6">${stage}</td>
       `;
-      listEl.appendChild(card);
+      tableBody.appendChild(row);
+  
+      hasProducts = true;
     }
-
-    if (listEl.innerHTML.trim() === "") {
-      listEl.innerHTML = "<p>No products owned by you currently.</p>";
+  
+    if (!hasProducts) {
+      const emptyRow = document.createElement("tr");
+      emptyRow.innerHTML = `
+        <td class="py-3 px-6 text-center" colspan="5">No products owned by your wallet currently.</td>
+      `;
+      tableBody.appendChild(emptyRow);
     }
   },
 
@@ -277,7 +304,9 @@ const App = {
 
     for (let i = 0; i < count; i++) {
       const prod = await App.contractInstance.methods.products(i).call();
-      const stage = await App.contractInstance.methods.viewCurrentStage(i).call();
+      const stage = await App.contractInstance.methods
+        .viewCurrentStage(i)
+        .call();
 
       const card = document.createElement("div");
       card.className = "p-4 border rounded shadow-sm";
@@ -297,13 +326,15 @@ const App = {
 
     const prodCount = await App.contractInstance.methods.productCount().call();
     document.getElementById("productCount").innerText = prodCount;
-    const actorCount = await App.contractInstance.methods.getTotalActors().call();
+    const actorCount = await App.contractInstance.methods
+      .getTotalActors()
+      .call();
     document.getElementById("actorCount").innerText = actorCount;
-  }
+  },
 };
 
 async function updateProduct(e) {
-  e.preventDefault();  
+  e.preventDefault();
   if (!App.contractInstance) return alert("Contract not loaded.");
 
   const raw = document.getElementById("updateProductId").value.trim();
@@ -316,7 +347,7 @@ async function updateProduct(e) {
     const tx = App.contractInstance.methods.advanceStage(productId);
     const gasEstimate = await tx.estimateGas({ from: App.account });
 
-    const receipt = await tx.send({from: App.account, gas:gasEstimate});
+    const receipt = await tx.send({ from: App.account, gas: gasEstimate });
     console.log("advanceStage receipt:", receipt);
 
     // (Optional) if you emit an event, log it:
@@ -338,12 +369,6 @@ async function updateProduct(e) {
   }
 }
 
-
 document.addEventListener("DOMContentLoaded", () => {
   App.init();
 });
-
-
-
-
-
