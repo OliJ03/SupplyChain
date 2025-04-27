@@ -134,14 +134,14 @@ contract SupplyChain {
         return "Unknown";
     }
 
-    function getProductsByOwner(address ownerAddr) public view returns (Product[] memory) {
+    function getProductsByOwner(address ownerAddr) public view returns (uint[] memory) {
         uint count = 0;
         for (uint i = 0; i < productCount; i++) {
             if (productsInternal[i].currentOwner == ownerAddr) {
                 count++;
             }
         }
-        uint[] memory ownedProductIds = new Product[](count);
+        uint[] memory ownedProductIds = new uint[](count);
         uint index = 0;
         for (uint i = 0; i < productCount; i++) {
             if (productsInternal[i].currentOwner == ownerAddr) {
