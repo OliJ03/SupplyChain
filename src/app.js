@@ -100,14 +100,14 @@ const App = {
     }
 
     try {
-      const [name, description, price, stage, owner] = await App.contractInstance.methods.viewProduct(productId).call();
+      const /*[name, description, price, stage, owner]*/ prod = await App.contractInstance.methods.viewProduct(productId).call();
       const stageName = await App.contractInstance.methods.viewCurrentStage(productId).call();
-      const finalPrice = web3.utils.fromWei(price, "ether");
+      const finalPrice = web3.utils.fromWei(prod[2], "ether");
 
       let output = `
         <p><strong>ID:</strong> ${productId}</p>
-        <p><strong>Name:</strong> ${name}</p>
-        <p><strong>Description:</strong> ${description}</p>
+        <p><strong>Name:</strong> ${prod[0]}</p>
+        <p><strong>Description:</strong> ${prod[1]}</p>
         <p><strong>Current Stage:</strong> ${stageName}</p>
         <p><strong>Price:</strong> ${finalPrice} ETH</p>
       `;
@@ -397,18 +397,18 @@ const App = {
     listEl.innerHTML = "";
 
     for (let i = 0; i < count; i++) {
-      const [name, description, price, stage, owner] = await App.contractInstance.methods.viewProduct(i).call();
+      const prod = await App.contractInstance.methods.viewProduct(i).call();
       const stageName = await App.contractInstance.methods.viewCurrentStage(i).call();
 
       const card = document.createElement("div");
       card.className = "p-4 border rounded shadow-sm bg-white";
       card.innerHTML = `
         <h3 class="font-semibold">Product #${i}</h3>
-        <p><strong>Name:</strong> ${prod.name}</p>
-        <p><strong>Description:</strong> ${prod.description}</p>
-        <p><strong>Price:</strong> ${prod.price}</p>
+        <p><strong>Name:</strong> ${prod[0]}</p>
+        <p><strong>Description:</strong> ${prod[1]}</p>
+        <p><strong>Price:</strong> ${prod[2]}</p>
         <p><strong>Current Stage:</strong> ${stageName}</p>
-        <p><strong>Owner:</strong> ${prod.currentOwner}</p>
+        <p><strong>Owner:</strong> ${prod[4]}</p>
       `;
       listEl.appendChild(card);
     }
