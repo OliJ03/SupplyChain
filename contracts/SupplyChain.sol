@@ -70,6 +70,11 @@ contract SupplyChain {
         require(productId < productCount, "Invalid product ID");
         Product storage product = products[productId];
         require(product.currentStage != Stage.Sold, "Product already sold");
+
+        // Add 10% margin at each stage
+        uint256 newPrice = (product.price * 110) / 100;
+        product.price = newPrice;
+        
         product.currentStage = Stage(uint(product.currentStage) + 1);
     }
 
