@@ -3,6 +3,8 @@ const App = {
   contracts: {},
   account: null,
   contractInstance: null,
+  ownerAddress: null, 
+
 
   init: async function () {
     console.log("app.js loaded");
@@ -37,32 +39,28 @@ const App = {
 
   initContract: async function () {
     console.log("initContract running");
-    const response = await fetch(
-      `/build/contracts/SupplyChain.json?ts=${Date.now()}`
-    );
+    const response = await fetch(`/build/contracts/SupplyChain.json?ts=${Date.now()}`);
     const artifact = await response.json();
     const networkId = await web3.eth.net.getId();
-    console.log("networkId:", networkId);
-    console.log("available networks:", Object.keys(artifact.networks));
-
     const networkData = artifact.networks[networkId];
+
     if (!networkData || !networkData.address) {
       alert("Smart contract not deployed on this network.");
       return;
     }
 
-    const address = networkData.address;
-    App.contractInstance = new web3.eth.Contract(artifact.abi, address);
-    console.log("Contract loaded at:", address);
+    App.contractInstance = new web3.eth.Contract(artifact.abi, networkData.address);
+    App.ownerAddress = await App.contractInstance.methods.owner().call(); // Get owner address
+    console.log("Contract loaded at:", networkData.address);
   },
 
   bindFormEvents: function () {
     // Actor form
     const actorForm = document.getElementById("actorForm");
-
     if (actorForm) {
       actorForm.addEventListener("submit", App.handleAddActor);
     }
+
     //Add Product Form
     const productForm = document.getElementById("addProductForm");
     if (productForm) {
@@ -85,6 +83,97 @@ const App = {
     const loadBtn = document.getElementById("loadProductsBtn");
     if (loadBtn) loadBtn.addEventListener("click", App.renderProductList);
   },
+
+
+  handleTrackProduct: async function (e) {
+    console.log("▶ handleTrackProduct invoked");
+    e.preventDefault();
+    if (!App.contractInstance) return alert("Contract not loaded.");
+
+    const idInput = document.getElementById("trackProductId");
+    const resultDiv = document.getElementById("trackResult");
+    const rawId = idInput ? idInput.value.trim() : "";
+    const productId = parseInt(rawId, 10);
+
+    if (isNaN(productId)) {
+      return alert("Please enter a valid product ID.");
+    }
+
+    try {
+      const [name, description, price, stage, owner] = await App.contractInstance.methods.viewProduct(productId).call();
+      const stageName = await App.contractInstance.methods.viewCurrentStage(productId).call();
+      const finalPrice = web3.utils.fromWei(price, "ether");
+
+      let output = `
+        <p><strong>ID:</strong> ${productId}</p>
+        <p><strong>Name:</strong> ${name}</p>
+        <p><strong>Description:</strong> ${description}</p>
+        <p><strong>Current Stage:</strong> ${stageName}</p>
+        <p><strong>Price:</strong> ${finalPrice} ETH</p>
+      `;
+
+      // If owner is viewing, show Margin Table
+      if (App.account.toLowerCase() === App.ownerAddress.toLowerCase()) {
+        const margins = await App.contractInstance.methods.getStagePrices(productId).call();
+        output += App.generateMarginHistoryTable(margins);
+      }
+
+      if (resultDiv) {
+        resultDiv.innerHTML = output;
+      } else {
+        console.log(output);
+      }
+    } catch (err) {
+      console.error("Error tracking product:", err);
+      alert("There was an error fetching product data. See console for details.");
+    }
+  },
+
+
+  generateMarginHistoryTable: function (margins) {
+    const stages = ["Raw Material", "Supplier", "Shipper", "Distributor", "Retailer", "Sold"];
+    let rows = "";
+    let lastPrice = 0;
+
+    for (let i = 0; i < stages.length; i++) {
+      const price = web3.utils.fromWei(margins[i], "ether");
+      if (price > 0) {
+        let percentage = lastPrice > 0 ? ((price - lastPrice) / lastPrice * 100).toFixed(2) + "%" : "-";
+        rows += `
+          <tr class="border-t">
+            <td class="py-2 px-4">${stages[i]}</td>
+            <td class="py-2 px-4">${price} ETH</td>
+            <td class="py-2 px-4">${percentage}</td>
+          </tr>
+        `;
+        lastPrice = parseFloat(price);
+      }
+    }
+
+    if (!rows) {
+      return `<p class="mt-4 text-gray-500 italic">No margin history yet.</p>`;
+    }
+
+    return `
+      <div class="mt-6">
+        <h3 class="text-lg font-semibold mb-2">Margin History</h3>
+        <table class="min-w-full bg-white shadow-md rounded">
+          <thead class="bg-gray-100 text-gray-600">
+            <tr>
+              <th class="py-2 px-4 text-left">Stage</th>
+              <th class="py-2 px-4 text-left">Price (ETH)</th>
+              <th class="py-2 px-4 text-left">% Increase</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rows}
+          </tbody>
+        </table>
+      </div>
+    `;
+  },
+
+
 
   handleAddActor: async function (e) {
     console.log("handleAddActor invoked");
@@ -138,7 +227,7 @@ const App = {
       alert("There was an error adding the actor. See console for details.");
     }
   },
-
+  
   handleRegisterProduct: async function (e) {
     e.preventDefault();
     if (!App.contractInstance) return alert("Contract not loaded.");
@@ -165,6 +254,8 @@ const App = {
       );
     }
   },
+
+  /*
   handleTrackProduct: async function (e) {
     console.log("▶ handleTrackProduct invoked");
     e.preventDefault();
@@ -225,6 +316,8 @@ const App = {
       );
     }
   },
+  */
+
   handleBuyProduct: async function (e) {
     console.log("handleBuyProduct invoked");
     e.preventDefault();
@@ -300,22 +393,21 @@ const App = {
 
     const count = await App.contractInstance.methods.productCount().call();
     const listEl = document.getElementById("productList");
+    if (!listEl) return;
     listEl.innerHTML = "";
 
     for (let i = 0; i < count; i++) {
-      const prod = await App.contractInstance.methods.products(i).call();
-      const stage = await App.contractInstance.methods
-        .viewCurrentStage(i)
-        .call();
+      const [name, description, price, stage, owner] = await App.contractInstance.methods.viewProduct(i).call();
+      const stageName = await App.contractInstance.methods.viewCurrentStage(i).call();
 
       const card = document.createElement("div");
-      card.className = "p-4 border rounded shadow-sm";
+      card.className = "p-4 border rounded shadow-sm bg-white";
       card.innerHTML = `
         <h3 class="font-semibold">Product #${i}</h3>
         <p><strong>Name:</strong> ${prod.name}</p>
         <p><strong>Description:</strong> ${prod.description}</p>
         <p><strong>Price:</strong> ${prod.price}</p>
-        <p><strong>Stage:</strong> ${stage}</p>
+        <p><strong>Current Stage:</strong> ${stageName}</p>
         <p><strong>Owner:</strong> ${prod.currentOwner}</p>
       `;
       listEl.appendChild(card);
