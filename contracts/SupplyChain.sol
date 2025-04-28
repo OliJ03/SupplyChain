@@ -155,5 +155,19 @@ contract SupplyChain {
     function getTotalActors() public view returns (uint) {
         return rawMaterialSuppliers.length + suppliers.length + shippers.length + distributors.length + retailers.length;
     }
+    
+	    function getPrice(uint256 productId) public view returns (uint256) {
+	    require(productId < productCount, "Invalid product ID");
+	    Product storage p = productsInternal[productId];
+
+	    if (msg.sender != owner) {
+		require(
+		  p.currentStage == Stage.Retailer || p.currentStage == Stage.Sold,
+		  "Price locked until Retailer stage"
+		);
+	    }
+
+	    return p.price;
+	}
 }
 

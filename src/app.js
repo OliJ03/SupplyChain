@@ -90,39 +90,49 @@ const App = {
     e.preventDefault();
     if (!App.contractInstance) return alert("Contract not loaded.");
 
-    const idInput = document.getElementById("trackProductId");
-    const resultDiv = document.getElementById("trackResult");
-    const rawId = idInput ? idInput.value.trim() : "";
+    const rawId     = (document.getElementById("trackProductId") || {}).value?.trim() || "";
     const productId = parseInt(rawId, 10);
-
     if (isNaN(productId)) {
       return alert("Please enter a valid product ID.");
     }
 
     try {
-      const /*[name, description, price, stage, owner]*/ prod = await App.contractInstance.methods.viewProduct(productId).call();
+      // 1) Fetch basic info
+      const prod      = await App.contractInstance.methods.viewProduct(productId).call();
       const stageName = await App.contractInstance.methods.viewCurrentStage(productId).call();
-      const finalPrice = web3.utils.fromWei(prod[2], "ether");
 
+      // 2) Try owner-override getPrice()
+      let priceHtml;
+      try {
+        const rawPrice = await App.contractInstance.methods
+          .getPrice(productId)
+          .call({ from: App.account });
+        const ethPrice = web3.utils.fromWei(rawPrice, "ether");
+        priceHtml = `<p><strong>Price:</strong> ${ethPrice} ETH</p>`;
+      } catch {
+        priceHtml = `
+          <p class="text-gray-500 italic">
+            Price will unlock at the Retailer stage.
+          </p>
+        `;
+      }
+
+      // 3) Build the output
       let output = `
         <p><strong>ID:</strong> ${productId}</p>
         <p><strong>Name:</strong> ${prod[0]}</p>
         <p><strong>Description:</strong> ${prod[1]}</p>
         <p><strong>Current Stage:</strong> ${stageName}</p>
-        <p><strong>Price:</strong> ${finalPrice} ETH</p>
+        ${priceHtml}
       `;
 
-      // If owner is viewing, show Margin Table
+      // 4) If owner, append full margin history
       if (App.account.toLowerCase() === App.ownerAddress.toLowerCase()) {
         const margins = await App.contractInstance.methods.getStagePrices(productId).call();
         output += App.generateMarginHistoryTable(margins);
       }
 
-      if (resultDiv) {
-        resultDiv.innerHTML = output;
-      } else {
-        console.log(output);
-      }
+      document.getElementById("trackResult").innerHTML = output;
     } catch (err) {
       console.error("Error tracking product:", err);
       alert("There was an error fetching product data. See console for details.");
@@ -319,32 +329,37 @@ const App = {
   */
 
   handleBuyProduct: async function (e) {
-    console.log("handleBuyProduct invoked");
-    e.preventDefault();
+  e.preventDefault();
+  const rawId = document.getElementById("buyProductId").value.trim();
+  const id     = parseInt(rawId, 10);
+  if (isNaN(id)) return alert("Please enter a valid product ID.");
 
-    const rawId = document.getElementById("buyProductId").value.trim();
-    const id = parseInt(rawId, 10);
-    if (isNaN(id)) return alert("Please enter a valid product ID.");
-    try {
-      const prod = await App.contractInstance.methods.products(id).call();
-      const stage = parseInt(prod.currentStage);
-      if (stage !== 4) {
-        // 4 = Retailer
-        return alert("Product is not at the Retailer stage yet.");
-      }
-      await App.contractInstance.methods
-        .purchaseItem(id)
-        .send({ from: App.account, value: web3.utils.toBN(prod.price) });
-      console.log("Product purchased:", id);
-      alert(`Product ${id} purchased successfully!`);
-    } catch (err) {
-      console.error("purchaseItem failed:", err);
-      alert(
-        err.message ||
-          "Failed to purchase item. Ensure it's at Retailer stage and you sent enough ETH."
-      );
+  try {
+    // 1) Use viewProduct instead of missing .products()
+    const prod     = await App.contractInstance.methods.viewProduct(id).call();
+    const priceWei = prod[2];
+    const stageIdx = parseInt(prod[3], 10);
+
+    // 2) Only allow purchase at Retailer (stage 4)
+    if (stageIdx !== 4) {
+      return alert("Product is not at the Retailer stage yet.");
     }
-  },
+
+    // 3) send exactly the product.price
+    await App.contractInstance.methods
+      .purchaseItem(id)
+      .send({ from: App.account, value: web3.utils.toBN(priceWei) });
+
+    console.log("Product purchased:", id);
+    alert(`Product ${id} purchased successfully!`);
+  } catch (err) {
+    console.error("purchaseItem failed:", err);
+    alert(
+      err.message ||
+      "Failed to purchase. Make sure the product is at Retailer stage and you sent the exact ETH amount."
+    );
+  }
+},
 
   renderActorProducts: async function () {
     if (!App.contractInstance) return alert("Contract not loaded.");
@@ -400,13 +415,24 @@ const App = {
       const prod = await App.contractInstance.methods.viewProduct(i).call();
       const stageName = await App.contractInstance.methods.viewCurrentStage(i).call();
 
+     let priceHtml;
+      try {
+        const rawPrice = await App.contractInstance.methods
+                             .getPrice(i)
+                             .call({ from: App.account });
+        const ethPrice = web3.utils.fromWei(rawPrice, "ether");
+        priceHtml = `<p><strong>Price:</strong> ${ethPrice} ETH</p>`;
+      } catch {
+        priceHtml = `<p class="text-gray-500 italic">Locked until Retailer stage</p>`;
+      }
+
       const card = document.createElement("div");
       card.className = "p-4 border rounded shadow-sm bg-white";
       card.innerHTML = `
         <h3 class="font-semibold">Product #${i}</h3>
         <p><strong>Name:</strong> ${prod[0]}</p>
         <p><strong>Description:</strong> ${prod[1]}</p>
-        <p><strong>Price:</strong> ${prod[2]}</p>
+        ${priceHtml}
         <p><strong>Current Stage:</strong> ${stageName}</p>
         <p><strong>Owner:</strong> ${prod[4]}</p>
       `;
