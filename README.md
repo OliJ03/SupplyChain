@@ -30,3 +30,48 @@ Installation steps
 23. Restart npx http-server or go to the website and do ctrl+shift+R on the home page
        If you are on another page go back to the main page and refresh or truffle migrate until contract functions work properly
 24. Ganache should now be connected to MetaMask and the smart contract and the program should be working properly. 
+
+
+Dataset: 
+
+Cannot add a product until all system actors have been filled 
+Cannot buy a product until the product has reached retailer stage
+
+Raw Material Supplier: John Lumber < 02 ganache public address> New York
+Manufacturer: Haas < 03 ganache public address> Los Angeles
+Shipper: DHL <04 ganache public address> Berlin
+Distributor: Amazon <05 ganache public address> Reno
+Retailer: Target <06 ganache public address> Sacramento 
+
+Add Product: 
+Name: Honda
+Description: Car
+Price of Product: 1 
+Raw-Material Supplier: John Lumber (02 ganache public address) 
+Manufacturer: Haas (03 ganache public address) 
+
+Track Product: 
+Productid: 0 
+
+Update Stage: 
+Productid: 0 
+DropDown: select system actor
+
+Track Product: 
+Productid:0
+
+Purchase Product: 
+Productid:0 
+
+Add Actor: 
+Name: yourname 
+Address: owner metamask public address
+Place of Operation: Sacramento 
+
+Add Product: 
+Name: Toyota
+Description: Car
+Price: 1
+Raw-Material Supplier:  yourname (owner public metamask address)
+manufacturer : Haas
+Click profile logo in top right next to connect wallet for owner product view 
