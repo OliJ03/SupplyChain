@@ -75,3 +75,6 @@ Price: 1
 Raw-Material Supplier:  yourname (owner public metamask address)
 manufacturer : Haas
 Click profile logo in top right next to connect wallet for owner product view 
+Results should closely match the video demo here: 
+https://youtu.be/tskm8mYhmz8
+
