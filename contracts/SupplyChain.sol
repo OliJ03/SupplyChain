@@ -1,3 +1,4 @@
+
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
@@ -13,15 +14,16 @@ contract SupplyChain {
     struct Product {
         string name;
         string description;
-        uint256 price; 
+        uint256 price;
         Stage currentStage;
         address currentOwner;
-        mapping(Stage => uint256) stagePrices; 
+        address manufacturer;
+        address[] actorHistory;
+        mapping(Stage => uint256) stagePrices;
     }
 
-
     address public owner;
-    uint public productCount = 0;
+    uint public productCount;
     mapping(uint => Product) private productsInternal;
 
     Company[] public rawMaterialSuppliers;
@@ -30,8 +32,17 @@ contract SupplyChain {
     Company[] public distributors;
     Company[] public retailers;
 
+    mapping(address => bool) public isRawMaterialSupplier;
+    mapping(address => bool) public isSupplier;
+    mapping(address => bool) public isShipper;
+    mapping(address => bool) public isDistributor;
+    mapping(address => bool) public isRetailer;
+    mapping(address => string) public actorNames;
+    mapping(address => string) public actorLocations;
+
     constructor() {
         owner = msg.sender;
+        productCount = 0;
     }
 
     modifier onlyOwner() {
@@ -39,65 +50,82 @@ contract SupplyChain {
         _;
     }
 
-    // Add Company Functions
+    modifier allRolesPresent() {
+        require(rawMaterialSuppliers.length > 0, "No raw material supplier registered");
+        require(suppliers.length > 0, "No supplier registered");
+        require(shippers.length > 0, "No shipper registered");
+        require(distributors.length > 0, "No distributor registered");
+        require(retailers.length > 0, "No retailer registered");
+        _;
+    }
+
     function addRawMaterialSupplier(string memory name, address companyAddr, string memory location) public onlyOwner {
         rawMaterialSuppliers.push(Company(name, companyAddr, location));
+        isRawMaterialSupplier[companyAddr] = true;
+        actorNames[companyAddr] = name;
+        actorLocations[companyAddr] = location;
     }
 
     function addSupplier(string memory name, address companyAddr, string memory location) public onlyOwner {
         suppliers.push(Company(name, companyAddr, location));
+        isSupplier[companyAddr] = true;
+        actorNames[companyAddr] = name;
+        actorLocations[companyAddr] = location;
     }
 
     function addShipper(string memory name, address companyAddr, string memory location) public onlyOwner {
         shippers.push(Company(name, companyAddr, location));
+        isShipper[companyAddr] = true;
+        actorNames[companyAddr] = name;
+        actorLocations[companyAddr] = location;
     }
 
     function addDistributer(string memory name, address companyAddr, string memory location) public onlyOwner {
         distributors.push(Company(name, companyAddr, location));
+        isDistributor[companyAddr] = true;
+        actorNames[companyAddr] = name;
+        actorLocations[companyAddr] = location;
     }
 
     function addRetailer(string memory name, address companyAddr, string memory location) public onlyOwner {
         retailers.push(Company(name, companyAddr, location));
+        isRetailer[companyAddr] = true;
+        actorNames[companyAddr] = name;
+        actorLocations[companyAddr] = location;
     }
-    
-    modifier allRolesPresent() {
-	    require(rawMaterialSuppliers.length > 0, "No raw material supplier registered");
-	    require(suppliers.length             > 0, "No supplier registered");
-	    require(shippers.length              > 0, "No shipper registered");
-	    require(distributors.length          > 0, "No distributor registered");
-	    require(retailers.length             > 0, "No retailer registered");
-	    _;
-	}
-   // Create a new product
-    function createProduct(string memory name, string memory description, uint256 price) public onlyOwner allRolesPresent {
+
+    function createProduct(
+        string memory name,
+        string memory description,
+        uint256 price,
+        address rawSupplierAddr,
+        address supplierAddr
+    ) public onlyOwner allRolesPresent {
+        require(isRawMaterialSupplier[rawSupplierAddr], "Not a registered raw supplier");
         Product storage newProduct = productsInternal[productCount];
         newProduct.name = name;
         newProduct.description = description;
         newProduct.price = price;
         newProduct.currentStage = Stage.RawMaterial;
-        newProduct.currentOwner = msg.sender;
+        newProduct.currentOwner = rawSupplierAddr;
+        newProduct.manufacturer = supplierAddr;
+        newProduct.actorHistory.push(rawSupplierAddr);
         newProduct.stagePrices[Stage.RawMaterial] = price;
         productCount++;
     }
 
-    // Simulate progress through supply chain
-    function advanceStage(uint productId) public onlyOwner {
+    function advanceStage(uint productId, address actorAddr) public onlyOwner {
         require(productId < productCount, "Invalid product ID");
         Product storage product = productsInternal[productId];
         require(product.currentStage != Stage.Sold, "Product already sold");
-
-        // Increase price by 10%
         product.price = (product.price * 110) / 100;
-
-        // Advance stage
         product.currentStage = Stage(uint(product.currentStage) + 1);
-
-        // Save price at new stage
         product.stagePrices[product.currentStage] = product.price;
+        product.actorHistory.push(actorAddr);
+        product.currentOwner = actorAddr;
     }
 
 
-    // Purchase item at final stage
     function purchaseItem(uint productId) public payable {
         require(productId < productCount, "Invalid product ID");
         Product storage product = productsInternal[productId];
@@ -105,31 +133,42 @@ contract SupplyChain {
         require(msg.value == product.price, "Incorrect payment amount");
         product.currentStage = Stage.Sold;
         product.currentOwner = msg.sender;
+        product.actorHistory.push(msg.sender);
     }
 
-    // View product details (for frontend)
-    function viewProduct(uint productId) public view returns (string memory, string memory, uint256, Stage, address) {
+    function viewProduct(uint productId) public view returns (
+        string memory,
+        string memory,
+        uint256,
+        Stage,
+        address,
+        address
+    ) {
         require(productId < productCount, "Invalid product ID");
         Product storage product = productsInternal[productId];
-        return (product.name, product.description, product.price, product.currentStage, product.currentOwner);
+        return (
+            product.name,
+            product.description,
+            product.price,
+            product.currentStage,
+            product.currentOwner,
+            product.manufacturer
+        );
     }
 
-    // View all stage prices for a product (Margin Tracker)
     function getStagePrices(uint productId) public view returns (uint256[6] memory) {
         require(productId < productCount, "Invalid product ID");
         Product storage product = productsInternal[productId];
-
         uint256[6] memory prices;
         prices[0] = product.stagePrices[Stage.RawMaterial];
         prices[1] = product.stagePrices[Stage.Supplier];
         prices[2] = product.stagePrices[Stage.Shipper];
         prices[3] = product.stagePrices[Stage.Distributor];
         prices[4] = product.stagePrices[Stage.Retailer];
-        prices[5] = product.stagePrices[Stage.Sold]; // Should be zero until sold, but safe
+        prices[5] = product.stagePrices[Stage.Sold];
         return prices;
     }
 
-    // View current stage
     function viewCurrentStage(uint productId) public view returns (string memory) {
         require(productId < productCount, "Invalid product ID");
         Stage stage = productsInternal[productId].currentStage;
@@ -142,40 +181,64 @@ contract SupplyChain {
         return "Unknown";
     }
 
+    function getActorHistory(uint productId) public view returns (address[] memory) {
+        require(productId < productCount, "Invalid product ID");
+        return productsInternal[productId].actorHistory;
+    }
+
     function getProductsByOwner(address ownerAddr) public view returns (uint[] memory) {
-        uint count = 0;
+        uint count;
+        for (uint i = 0; i < productCount; i++) {
+            if (productsInternal[i].currentOwner == ownerAddr) count++;
+        }
+        uint[] memory ownedIds = new uint[](count);
+        uint idx;
         for (uint i = 0; i < productCount; i++) {
             if (productsInternal[i].currentOwner == ownerAddr) {
-                count++;
+                ownedIds[idx++] = i;
             }
         }
-        uint[] memory ownedProductIds = new uint[](count);
-        uint index = 0;
-        for (uint i = 0; i < productCount; i++) {
-            if (productsInternal[i].currentOwner == ownerAddr) {
-                ownedProductIds[index] = i;
-                index++;
-            }
-        }
-        return ownedProductIds;
+        return ownedIds;
     }
 
     function getTotalActors() public view returns (uint) {
-        return rawMaterialSuppliers.length + suppliers.length + shippers.length + distributors.length + retailers.length;
+        return rawMaterialSuppliers.length
+             + suppliers.length
+             + shippers.length
+             + distributors.length
+             + retailers.length;
     }
-    
-	    function getPrice(uint256 productId) public view returns (uint256) {
-	    require(productId < productCount, "Invalid product ID");
-	    Product storage p = productsInternal[productId];
 
-	    if (msg.sender != owner) {
-		require(
-		  p.currentStage == Stage.Retailer || p.currentStage == Stage.Sold,
-		  "Price locked until Retailer stage"
-		);
-	    }
+    function getPrice(uint256 productId) public view returns (uint256) {
+        require(productId < productCount, "Invalid product ID");
+        Product storage p = productsInternal[productId];
+        if (msg.sender != owner) {
+            require(
+                p.currentStage == Stage.Retailer || p.currentStage == Stage.Sold,
+                "Price locked until Retailer stage"
+            );
+        }
+        return p.price;
+    }
 
-	    return p.price;
-	}
+    function suppliersLength() public view returns (uint) {
+        return suppliers.length;
+    }
+    function rawMaterialSuppliersLength() public view returns (uint) {
+        return rawMaterialSuppliers.length;
+    }
+    function shippersLength() public view returns (uint) {
+        return shippers.length;
+    }
+    function distributorsLength() public view returns (uint) {
+        return distributors.length;
+    }
+    function retailersLength() public view returns (uint) {
+        return retailers.length;
+    }
 }
+
+
+
+
 

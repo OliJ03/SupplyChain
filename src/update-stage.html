@@ -44,24 +44,46 @@
 
   <main class="container mx-auto p-6">
     <section class="bg-white p-6 rounded shadow">
-      <h2 class="text-xl font-semibold mb-4">Enter Product</h2>
-      <form id="updateForm" class="space-y-4">
-        <div>
-          <label for="updateProductId" class="block font-medium">Product Id:</label>
-          <input type="number" id="updateProductId" class="w-full mt-1 p-2 border rounded" required />
-        </div>
-        <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">Advance Stage</button>
-      </form>
-      <div class="mt-4 p-4 bg-gray-50 rounded shadow">
-        <strong>Current Stage:</strong>
-        <span id="currentStageDisplay">—</span>
-    </section>
-    <section class="bg-white p-6 rounded shadow mt-8">
-    <h2 class="text-xl font-semibold mb-4">All Products on Chain</h2>
-    <div id="productList" class="mt-4 space-y-4">
+  <h2 class="text-xl font-semibold mb-4">Advance Product Stage</h2>
+  <form id="updateForm" class="space-y-4">
+    <div>
+      <label for="updateProductId" class="block font-medium">Product ID:</label>
+      <input
+        type="number"
+        id="updateProductId"
+        class="w-full mt-1 p-2 border rounded"
+        required
+      />
     </div>
-  </section>
-  </main>
+
+    <div>
+      <label for="stageActorSelect" class="block font-medium">Who’s advancing?</label>
+      <select
+        id="stageActorSelect"
+        class="w-full mt-1 p-2 border rounded"
+        required
+      >
+        <option value="">— Select actor —</option>
+      </select>
+    </div>
+
+    <button
+      type="submit"
+      class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+    >
+      Advance Stage
+    </button>
+  </form>
+
+  <div class="mt-4 p-4 bg-gray-50 rounded shadow">
+    <strong>Current Stage:</strong>
+    <span id="currentStageDisplay">—</span>
+  </div>
+</section>
+<section id="productList" class="grid gap-4">
+  <!-- App.renderProductList will fill this with product cards -->
+</section>
+</main>
 
 </body>
 </html>
