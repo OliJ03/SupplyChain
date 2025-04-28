@@ -97,11 +97,8 @@ const App = {
     }
 
     try {
-      // 1) Fetch basic info
       const prod      = await App.contractInstance.methods.viewProduct(productId).call();
       const stageName = await App.contractInstance.methods.viewCurrentStage(productId).call();
-
-      // 2) Try owner-override getPrice()
       let priceHtml;
       try {
         const rawPrice = await App.contractInstance.methods
@@ -113,20 +110,15 @@ const App = {
         priceHtml = `
           <p class="text-gray-500 italic">
             Price will unlock at the Retailer stage.
-          </p>
-        `;
+          </p>`;
       }
-
-      // 3) Build the output
       let output = `
         <p><strong>ID:</strong> ${productId}</p>
         <p><strong>Name:</strong> ${prod[0]}</p>
         <p><strong>Description:</strong> ${prod[1]}</p>
         <p><strong>Current Stage:</strong> ${stageName}</p>
-        ${priceHtml}
-      `;
+        ${priceHtml}`;
 
-      // 4) If owner, append full margin history
       if (App.account.toLowerCase() === App.ownerAddress.toLowerCase()) {
         const margins = await App.contractInstance.methods.getStagePrices(productId).call();
         output += App.generateMarginHistoryTable(margins);
@@ -240,16 +232,28 @@ const App = {
   
   handleRegisterProduct: async function (e) {
     e.preventDefault();
-    if (!App.contractInstance) return alert("Contract not loaded.");
+    if (!App.contractInstance) {
+      return alert("Contract not loaded.");
+    }
 
-    const name = document.getElementById("productName").value.trim();
-    const description = document
-      .getElementById("productDescription")
-      .value.trim();
-    const price = document.getElementById("productPrice").value.trim();
-    const priceWei = web3.utils.toWei(price, "ether");
+    const name        = document.getElementById("productName").value.trim();
+    const description = document.getElementById("productDescription").value.trim();
+    const price       = document.getElementById("productPrice").value.trim();
     if (!name || !description || !price) {
-      return alert("Please enter both product name and description.");
+      return alert("Please enter product name, description, and a price.");
+    }
+    const priceWei = web3.utils.toWei(price, "ether");
+
+    try {
+      await App.contractInstance.methods
+        .createProduct(name, description, priceWei)
+        .call({ from: App.account });
+    } catch (simErr) {
+      const msg   = simErr.message || "";
+      const match = msg.match(/revert\s+(.+)/);
+      let reason  = match ? match[1] : "Transaction failed";
+      reason = reason.replace(/["',\s]+$/, "");
+      return alert(reason);
     }
 
     try {
@@ -257,76 +261,15 @@ const App = {
         .createProduct(name, description, priceWei)
         .send({ from: App.account });
       alert("Product registered successfully!");
-    } catch (err) {
-      console.error("Error registering product:", err);
-      alert(
-        "There was an error registering the product. See console for details."
-      );
+    } catch (txErr) {
+      console.error("Transaction failed:", txErr);
+      alert(txErr.message || "Transaction failed unexpectedly.");
     }
-  },
+  },  
 
-  /*
-  handleTrackProduct: async function (e) {
-    console.log("▶ handleTrackProduct invoked");
-    e.preventDefault();
-    if (!App.contractInstance) return alert("Contract not loaded.");
 
-    const idInput = document.getElementById("trackProductId");
-    const resultDiv = document.getElementById("trackResult");
-    const rawId = idInput ? idInput.value.trim() : "";
-    const productId = parseInt(rawId, 10);
 
-    if (isNaN(productId)) {
-      return alert("Please enter a valid product ID.");
-    }
-
-    try {
-      const prod = await App.contractInstance.methods
-        .products(productId)
-        .call();
-      const stageIndex = parseInt(prod.currentStage, 10);
-      const stages = [
-        "RawMaterial",
-        "Supplier",
-        "Shipper",
-        "Distributor",
-        "Retailer",
-        "Sold",
-      ];
-      const stageStr = stages[stageIndex] || `Unknown (${stageIndex})`;
-
-      const output = `
-        <p><strong>ID:</strong> ${productId}</p>
-        <p><strong>Name:</strong> ${prod.name}</p>
-        <p><strong>Description:</strong> ${prod.description}</p>
-        <p><strong>Price:</strong> ${prod.price}</p>
-        <p><strong>Stage:</strong> ${stageStr}</p>
-        <p><strong>Owner:</strong> ${prod.currentOwner}</p>
-        
-      `;
-
-      if (resultDiv) {
-        resultDiv.innerHTML = output;
-      } else {
-        console.log("Track product result:", output);
-        alert(
-          `Track product result:
-          ID:          		${productId}
-          Name:        	${prod.name}
-          Description: 	${prod.description}
-          Price: 		${prod.price}
-          Stage:       		${stageStr}
-          Owner:       	${prod.currentOwner}`
-        );
-      }
-    } catch (err) {
-      console.error("Error tracking product:", err);
-      alert(
-        "There was an error fetching product data. See console for details."
-      );
-    }
-  },
-  */
+  
 
   handleBuyProduct: async function (e) {
   e.preventDefault();
@@ -335,17 +278,14 @@ const App = {
   if (isNaN(id)) return alert("Please enter a valid product ID.");
 
   try {
-    // 1) Use viewProduct instead of missing .products()
     const prod     = await App.contractInstance.methods.viewProduct(id).call();
     const priceWei = prod[2];
     const stageIdx = parseInt(prod[3], 10);
 
-    // 2) Only allow purchase at Retailer (stage 4)
     if (stageIdx !== 4) {
       return alert("Product is not at the Retailer stage yet.");
     }
 
-    // 3) send exactly the product.price
     await App.contractInstance.methods
       .purchaseItem(id)
       .send({ from: App.account, value: web3.utils.toBN(priceWei) });

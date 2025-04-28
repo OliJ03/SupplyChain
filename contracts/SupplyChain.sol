@@ -59,9 +59,17 @@ contract SupplyChain {
     function addRetailer(string memory name, address companyAddr, string memory location) public onlyOwner {
         retailers.push(Company(name, companyAddr, location));
     }
-
+    
+    modifier allRolesPresent() {
+	    require(rawMaterialSuppliers.length > 0, "No raw material supplier registered");
+	    require(suppliers.length             > 0, "No supplier registered");
+	    require(shippers.length              > 0, "No shipper registered");
+	    require(distributors.length          > 0, "No distributor registered");
+	    require(retailers.length             > 0, "No retailer registered");
+	    _;
+	}
    // Create a new product
-    function createProduct(string memory name, string memory description, uint256 price) public onlyOwner {
+    function createProduct(string memory name, string memory description, uint256 price) public onlyOwner allRolesPresent {
         Product storage newProduct = productsInternal[productCount];
         newProduct.name = name;
         newProduct.description = description;
